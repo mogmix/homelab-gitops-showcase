@@ -1,0 +1,14 @@
+# Read-only proxy in front of the Docker socket: grants container-stats access
+# (CONTAINERS) without giving a monitoring agent docker-group root on the host.
+# PING/VERSION default on so the Docker client can negotiate; writes stay denied.
+services:
+  docker-socket-proxy:
+    image: {{ docker_socket_proxy_image }}
+    container_name: docker-socket-proxy
+    restart: unless-stopped
+    environment:
+      CONTAINERS: 1
+    ports:
+      - "{{ docker_socket_proxy_bind }}:2375"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro

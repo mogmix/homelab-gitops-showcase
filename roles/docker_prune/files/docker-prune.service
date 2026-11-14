@@ -1,0 +1,9 @@
+# Managed by Ansible (roles/docker_prune).
+[Unit]
+Description=Remove Docker images unused by any container
+Wants=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/docker image prune -af

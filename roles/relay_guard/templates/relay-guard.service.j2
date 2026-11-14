@@ -1,0 +1,14 @@
+# {{ ansible_managed }}
+[Unit]
+Description=nftables relay guard (edge <-> :{{ relay_guard_port }} symmetry)
+Wants=network-pre.target
+Before=network-pre.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/nft -f /etc/nftables.d/relay-guard.nft
+ExecReload=/usr/sbin/nft -f /etc/nftables.d/relay-guard.nft
+
+[Install]
+WantedBy=multi-user.target

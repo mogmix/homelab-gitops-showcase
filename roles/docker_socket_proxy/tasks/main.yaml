@@ -1,0 +1,20 @@
+- name: Ensure docker-socket-proxy directory exists
+  ansible.builtin.file:
+    path: "{{ docker_socket_proxy_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+- name: Template docker-socket-proxy compose file
+  ansible.builtin.template:
+    src: compose.yaml.j2
+    dest: "{{ docker_socket_proxy_dir }}/compose.yaml"
+    owner: root
+    group: root
+    mode: "0640"
+  notify: Recreate docker-socket-proxy
+- name: Bring up docker-socket-proxy
+  community.docker.docker_compose_v2:
+    project_src: "{{ docker_socket_proxy_dir }}"
+    state: present
+    pull: missing

@@ -1,0 +1,19 @@
+http:
+  routers:
+    # Hostnames not in the generated allowlist (relay.yaml): masked error
+    # page, nothing relayed inward. priority 1 = always lowest.
+    catch-all:
+      entryPoints: [websecure]
+      priority: 1
+      rule: HostRegexp(`^.+$`)
+      service: forbidden-service
+  services:
+    gateway:
+      loadBalancer:
+        servers:
+          # proxyguard `relayed` entrypoint; /etc/hosts maps the name to the proxy tailnet IP
+          - url: https://proxy.int.example.com:8443
+    forbidden-service:
+      loadBalancer:
+        servers:
+          - url: http://forbidden-server:80

@@ -1,0 +1,25 @@
+- name: Write Renovate env file
+  ansible.builtin.template:
+    src: renovate.env.j2
+    dest: "{{ renovate_env_file }}"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+- name: Install systemd units
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - renovate.service
+    - renovate.timer
+  notify: Restart renovate timer
+- name: Enable and start Renovate timer
+  ansible.builtin.systemd_service:
+    name: renovate.timer
+    daemon_reload: true
+    enabled: true
+    state: started

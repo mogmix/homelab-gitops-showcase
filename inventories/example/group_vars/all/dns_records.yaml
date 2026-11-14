@@ -1,0 +1,17 @@
+# Homelab-owned DNS records, per backend. Only A, AAAA and CNAME; mail records stay out.
+# Entry: name, type, target, optional `state: absent`. Checked by scripts/hooks/check-dns-records.py.
+# Public names point at the edge (203.0.113.10); internal names at ProxyGuard on the
+# LAN (192.0.2.20) or on the tailnet (100.64.0.20). All addresses are documentation examples.
+cloudflare_records:
+  - {name: "*.int.example.com", type: A, target: 192.0.2.20}
+  - {name: git.example.com, type: A, target: 100.64.0.20}
+  - {name: whoami.example.com, type: A, target: 203.0.113.10}
+  - {name: auth.example.com, type: A, target: 203.0.113.10}
+  - {name: id.example.com, type: A, target: 203.0.113.10}
+# Split horizon: on the LAN, public names short-circuit to ProxyGuard instead of
+# round-tripping through the edge.
+unbound_records:
+  - {name: "*.int.example.com", type: A, target: 192.0.2.20}
+  - {name: whoami.example.com, type: A, target: 192.0.2.20}
+  - {name: auth.example.com, type: A, target: 192.0.2.20}
+  - {name: id.example.com, type: A, target: 192.0.2.20}

@@ -1,0 +1,41 @@
+# Mozilla intermediate TLS — https://ssl-config.mozilla.org/#server=traefik
+tls:
+  options:
+    default:
+      minVersion: VersionTLS12
+      curvePreferences:
+        - "X25519"
+        - "CurveP256"
+        - "CurveP384"
+      cipherSuites:
+        - "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256"
+        - "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"
+        - "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384"
+        - "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"
+        - "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305"
+        - "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305"
+http:
+  middlewares:
+    defaultChain:
+      chain:
+        middlewares:
+          - secureHeaders
+    secureHeaders:
+      headers:
+        # HSTS, 1 year
+        forceSTSHeader: true
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
+        # Nothing embeds our services in iframes
+        frameDeny: true
+        # Safest CSP baseline; tighten as tested
+        contentSecurityPolicy: "upgrade-insecure-requests; block-all-mixed-content"
+        contentTypeNosniff: true
+        referrerPolicy: "same-origin"
+        customResponseHeaders:
+          Permissions-Policy: "camera=(), microphone=(), geolocation=(), payment=()"
+          # Hide the tech stack
+          server: ""
+        hostsProxyHeaders:
+          - X-Forwarded-Host

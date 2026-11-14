@@ -1,0 +1,10 @@
+# Managed by Ansible (roles/renovate).
+[Unit]
+Description=Daily Renovate run
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+
+[Install]
+WantedBy=timers.target

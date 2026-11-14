@@ -1,0 +1,30 @@
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  // Reviewable pull requests only: a human merge is the deploy gate.
+  extends: ["config:recommended"],
+  dependencyDashboard: true,
+  automerge: false,
+  enabledManagers: ["docker-compose", "ansible-galaxy", "custom.regex", "mise"],
+  customManagers: [
+    {
+      // `# renovate: datasource=... depName=...` above a `*_version` variable.
+      customType: "regex",
+      managerFilePatterns: ["/^inventories/.+/vars\\.yaml$/"],
+      matchStrings: [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s+\\w+_version: \"(?<currentValue>[^\"]+)\"",
+      ],
+    },
+  ],
+  packageRules: [
+    // Collections only; Galaxy roles stay manual.
+    { matchDatasources: ["galaxy"], enabled: false },
+    // Pinned in stacks/edge and stacks/proxyguard.
+    { matchPackageNames: ["traefik"], groupName: "traefik" },
+    // Stateful upgrades with irreversible migrations: approve on the Dashboard
+    // once a restore point exists.
+    {
+      matchPackageNames: ["ghcr.io/pocket-id/pocket-id"],
+      dependencyDashboardApproval: true,
+    },
+  ],
+}

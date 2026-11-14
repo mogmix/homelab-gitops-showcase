@@ -1,0 +1,10 @@
+# Managed by Ansible (roles/docker_prune).
+[Unit]
+Description=Weekly Docker image prune
+
+[Timer]
+OnCalendar=weekly
+Persistent=true
+
+[Install]
+WantedBy=timers.target

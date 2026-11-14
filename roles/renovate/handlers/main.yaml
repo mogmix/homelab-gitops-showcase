@@ -1,0 +1,4 @@
+- name: Restart renovate timer
+  ansible.builtin.systemd_service:
+    name: renovate.timer
+    state: restarted

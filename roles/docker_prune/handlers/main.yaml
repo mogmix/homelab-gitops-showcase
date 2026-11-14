@@ -1,0 +1,4 @@
+- name: Restart docker-prune timer
+  ansible.builtin.systemd_service:
+    name: docker-prune.timer
+    state: restarted

@@ -1,0 +1,14 @@
+# modePublic: internet-reachable through the edge, forward-auth mandatory.
+# Binds both entrypoints so insiders skip the edge round-trip.
+http:
+  routers:
+    whoami:
+      entryPoints: [websecure, relayed]
+      service: whoami@file
+      rule: Host(`whoami.example.com`)
+      middlewares: [modePublic]
+  services:
+    whoami:
+      loadBalancer:
+        servers:
+          - url: http://192.0.2.21:8080

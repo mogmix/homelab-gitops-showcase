@@ -1,0 +1,5 @@
+- name: Weekly Docker image prune
+  hosts: docker_prune
+  become: true
+  roles:
+    - docker_prune

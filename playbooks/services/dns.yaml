@@ -1,0 +1,31 @@
+# Applies inventories/example/group_vars/all/dns_records.yaml to the public Cloudflare zone.
+# Control machine only: the zone DNS-edit token never reaches a GitOps host.
+# Review with `--check --diff`. Non-authoritative: unlisted records are untouched; remove via `state: absent`.
+# `unbound_records` feed the internal resolver's host overrides; that resolver-specific
+# play is not part of this mirror, but the same file and the same hook govern both.
+- name: Apply DNS records
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    dns_zone: example.com
+  tasks:
+    - name: Refuse record types the backend must not manage
+      ansible.builtin.assert:
+        that:
+          - cloudflare_records | rejectattr('type', 'in', ['A', 'AAAA', 'CNAME']) | list | length == 0
+          - unbound_records | rejectattr('type', 'in', ['A', 'AAAA']) | list | length == 0
+        fail_msg: Cloudflare takes A, AAAA and CNAME; resolver host overrides take A and AAAA.
+    - name: Cloudflare records
+      community.general.cloudflare_dns:
+        api_token: "{{ vault_cloudflare_dns_token }}"
+        zone: "{{ dns_zone }}"
+        record: "{{ item.name }}"
+        type: "{{ item.type }}"
+        value: "{{ item.target }}"
+        state: "{{ item.state | default('present') }}"
+        proxied: false
+        solo: "{{ item.state | default('present') == 'present' }}"
+      loop: "{{ cloudflare_records }}"
+      loop_control:
+        label: "{{ item.name }}"

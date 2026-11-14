@@ -1,0 +1,73 @@
+- name: Create runner user
+  ansible.builtin.user:
+    name: gitea-runner
+    system: true
+    home: "{{ gitea_runner_home }}"
+    shell: /usr/sbin/nologin
+    groups: docker
+    append: true
+- name: Install runner binary
+  ansible.builtin.get_url:
+    url: "https://dl.gitea.com/gitea-runner/{{ gitea_runner_version }}/gitea-runner-{{ gitea_runner_version }}-linux-amd64"
+    dest: /usr/local/bin/gitea-runner
+    checksum: "sha256:{{ gitea_runner_sha256 }}"
+    owner: root
+    group: root
+    mode: "0755"
+  notify: Restart gitea-runner
+- name: Create config directory
+  ansible.builtin.file:
+    path: "{{ gitea_runner_config | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+- name: Write runner config
+  ansible.builtin.template:
+    src: config.yaml.j2
+    dest: "{{ gitea_runner_config }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart gitea-runner
+- name: Register runner once
+  ansible.builtin.command:
+    argv:
+      - gitea-runner
+      - register
+      - --no-interactive
+      - -c
+      - "{{ gitea_runner_config }}"
+      - --instance
+      - "{{ gitea_runner_instance }}"
+      - --name
+      - "{{ gitea_runner_name }}"
+      - --labels
+      - "{{ gitea_runner_labels | join(',') }}"
+    chdir: "{{ gitea_runner_home }}"
+    creates: "{{ gitea_runner_home }}/.runner"
+  become: true
+  become_user: gitea-runner
+  environment:
+    GITEA_RUNNER_REGISTRATION_TOKEN: "{{ vault_gitea_runner_registration_token }}"
+  no_log: true
+- name: Restrict runner identity file
+  ansible.builtin.file:
+    path: "{{ gitea_runner_home }}/.runner"
+    owner: gitea-runner
+    group: gitea-runner
+    mode: "0600"
+- name: Install systemd unit
+  ansible.builtin.template:
+    src: gitea-runner.service.j2
+    dest: /etc/systemd/system/gitea-runner.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart gitea-runner
+- name: Enable and start runner
+  ansible.builtin.systemd_service:
+    name: gitea-runner
+    daemon_reload: true
+    enabled: true
+    state: started

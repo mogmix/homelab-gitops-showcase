@@ -1,0 +1,8 @@
+# modeLocal: LAN only. Never binds `relayed`.
+http:
+  routers:
+    dashboardLocal:
+      entryPoints: [websecure]
+      service: api@internal
+      rule: Host(`traefik.int.example.com`)
+      middlewares: [modeLocal]

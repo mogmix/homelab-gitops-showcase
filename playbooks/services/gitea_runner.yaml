@@ -1,0 +1,7 @@
+- name: Gitea Actions runner
+  hosts: ci-runner
+  become: true
+  gather_facts: true
+  force_handlers: true
+  roles:
+    - gitea_runner

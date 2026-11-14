@@ -1,0 +1,4 @@
+- name: Recreate docker-socket-proxy
+  community.docker.docker_compose_v2:
+    project_src: "{{ docker_socket_proxy_dir }}"
+    state: restarted

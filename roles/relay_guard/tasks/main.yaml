@@ -1,0 +1,26 @@
+- name: Ensure nftables is installed
+  ansible.builtin.apt:
+    name: nftables
+    state: present
+- name: Ensure /etc/nftables.d exists
+  ansible.builtin.file:
+    path: /etc/nftables.d
+    state: directory
+    mode: "0755"
+- name: Template the relay guard ruleset
+  ansible.builtin.template:
+    src: relay-guard.nft.j2
+    dest: /etc/nftables.d/relay-guard.nft
+    mode: "0644"
+  notify: Reload relay guard
+- name: Install the relay guard systemd unit
+  ansible.builtin.template:
+    src: relay-guard.service.j2
+    dest: /etc/systemd/system/relay-guard.service
+    mode: "0644"
+  notify: Reload relay guard
+- name: Enable the relay guard at boot
+  ansible.builtin.systemd_service:
+    name: relay-guard
+    enabled: true
+    daemon_reload: true

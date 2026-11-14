@@ -1,0 +1,63 @@
+http:
+  middlewares:
+    whitelistLocal:
+      ipAllowList:
+        sourceRange:
+          - "127.0.0.1/32" # local
+          - "172.16.0.0/12" # docker
+          - "192.0.2.0/24" # lan
+    whitelistTailscale:
+      # Whole CGNAT range — the edge can't reach these routers (no :8443 bind).
+      ipAllowList:
+        sourceRange:
+          - "100.64.0.0/10" # tailscale CGNAT range
+    whitelistLocalTailscale:
+      ipAllowList:
+        sourceRange:
+          - "127.0.0.1/32" # local
+          - "172.16.0.0/12" # docker
+          - "192.0.2.0/24" # lan
+          - "100.64.0.0/10" # tailscale CGNAT range
+    tinyauth:
+      forwardAuth:
+        address: http://127.0.0.1:3000/api/auth/traefik
+        authResponseHeaders: [Remote-User]
+        trustForwardHeader: true
+        maxResponseBodySize: 8192
+    # Every router declares exactly one mode; see docs/adr/0001-edge-access-model.md.
+    modeLocal:
+      chain:
+        middlewares:
+          - whitelistLocal
+    modeTailscale:
+      chain:
+        middlewares:
+          - whitelistTailscale
+    modeLocalTailscale:
+      chain:
+        middlewares:
+          - whitelistLocalTailscale
+    modeLocalAuth:
+      chain:
+        middlewares:
+          - modeLocal
+          - tinyauth
+    modeTailscaleAuth:
+      chain:
+        middlewares:
+          - modeTailscale
+          - tinyauth
+    # Public exposure = binding `relayed`; relay_guard pins :8443 to the edge
+    # (roles/relay_guard). No IP middleware.
+    modePublic:
+      chain:
+        middlewares:
+          - tinyauth
+    # Carve-out for public services with their own login.
+    modePublicOwnAuth:
+      chain:
+        middlewares: []
+  serversTransports:
+    # Backends with self-signed certs (for example the Proxmox web UI).
+    insecureTransport:
+      insecureSkipVerify: true

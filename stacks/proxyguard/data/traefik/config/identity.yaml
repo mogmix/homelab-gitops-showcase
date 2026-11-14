@@ -1,0 +1,23 @@
+# modePublicOwnAuth: the marked carve-out. The identity layer cannot sit behind
+# itself, so tinyauth and Pocket ID carry their own login instead of forward-auth.
+http:
+  routers:
+    tinyauth:
+      entryPoints: [websecure, relayed]
+      service: tinyauth@file
+      rule: Host(`auth.example.com`)
+      middlewares: [modePublicOwnAuth]
+    pocketid:
+      entryPoints: [websecure, relayed]
+      service: pocketid@file
+      rule: Host(`id.example.com`)
+      middlewares: [modePublicOwnAuth]
+  services:
+    tinyauth:
+      loadBalancer:
+        servers:
+          - url: http://127.0.0.1:3000
+    pocketid:
+      loadBalancer:
+        servers:
+          - url: http://127.0.0.1:1411

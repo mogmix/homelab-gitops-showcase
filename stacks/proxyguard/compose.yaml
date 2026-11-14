@@ -1,0 +1,50 @@
+name: proxyguard
+services:
+  traefik:
+    image: "traefik:v3.7.17"
+    container_name: traefik
+    restart: "unless-stopped"
+    network_mode: host
+    volumes:
+      - "./data/traefik:/etc/traefik:ro" # git-tracked config, converges via reconcile; read-only so traefik can't write state into the tree
+      - "/srv/proxyguard/traefik:/state" # runtime state (acme.json) — outside the checkout, survives reset --hard
+    env_file:
+      - .env # CF_DNS_API_TOKEN secret
+    environment:
+      TZ: Etc/UTC
+  pocket-id:
+    image: ghcr.io/pocket-id/pocket-id:v2.19.2
+    container_name: pocket-id
+    restart: "unless-stopped"
+    network_mode: host
+    volumes:
+      - "/srv/proxyguard/pocket-id:/app/data"
+    env_file:
+      - .env # ENCRYPTION_KEY secret
+    environment:
+      TZ: Etc/UTC
+      TRUST_PROXY: "true"
+      APP_URL: "https://id.example.com"
+  tinyauth:
+    image: ghcr.io/tinyauthapp/tinyauth:v5.2.0
+    container_name: tinyauth
+    restart: "unless-stopped"
+    network_mode: host
+    volumes:
+      - "/srv/proxyguard/tinyauth:/data"
+    env_file:
+      - .env # TINYAUTH_OAUTH_PROVIDERS_POCKETID_CLIENTSECRET secret
+    environment:
+      TZ: Etc/UTC
+      TINYAUTH_OAUTH_AUTOREDIRECT: pocketid
+      TINYAUTH_AUTH_LOGINMAXRETRIES: "3"
+      TINYAUTH_AUTH_SESSIONEXPIRY: "604800" # 7 days
+      TINYAUTH_APPURL: "https://auth.example.com"
+      TINYAUTH_UI_TITLE: "Auth"
+      TINYAUTH_OAUTH_PROVIDERS_POCKETID_NAME: "Pocket ID"
+      TINYAUTH_OAUTH_PROVIDERS_POCKETID_CLIENTID: "00000000-0000-0000-0000-000000000000" # public client ID, set at OIDC client creation
+      TINYAUTH_OAUTH_PROVIDERS_POCKETID_SCOPES: "openid email profile groups"
+      TINYAUTH_OAUTH_PROVIDERS_POCKETID_AUTHURL: "https://id.example.com/authorize"
+      TINYAUTH_OAUTH_PROVIDERS_POCKETID_TOKENURL: "https://id.example.com/api/oidc/token"
+      TINYAUTH_OAUTH_PROVIDERS_POCKETID_USERINFOURL: "https://id.example.com/api/oidc/userinfo"
+      TINYAUTH_OAUTH_PROVIDERS_POCKETID_REDIRECTURL: "https://auth.example.com/api/oauth/callback/pocketid"

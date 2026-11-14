@@ -1,0 +1,7 @@
+renovate_image: "ghcr.io/renovatebot/renovate:44.195.1" # exact tag; bump by hand
+renovate_endpoint: "https://git.int.example.com" # Gitea, internal name
+renovate_repository: owner/homelab # the only repository the bot touches
+renovate_memory: 2g # container limit, swap included; unmeasured, raise if OOM-killed
+renovate_env_file: /etc/renovate.env # root-only; holds the tokens
+renovate_gitea_token: "{{ vault_renovate_gitea_token }}" # bot token: repo, user, issue, organization
+renovate_github_token: "{{ vault_renovate_github_token }}" # read-only github.com token, for changelogs

@@ -1,0 +1,7 @@
+line-length = 88
+target-version = "py312"
+extend-exclude = [".ansible"]
+
+[lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RET", "C4", "PGH", "RUF"]
+ignore = ["E501"]

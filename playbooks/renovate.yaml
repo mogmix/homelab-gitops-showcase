@@ -1,0 +1,5 @@
+- name: Renovate runtime
+  hosts: renovate
+  become: true
+  roles:
+    - renovate

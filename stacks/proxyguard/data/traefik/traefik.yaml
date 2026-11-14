@@ -1,0 +1,51 @@
+global:
+  checkNewVersion: false
+  sendAnonymousUsage: false
+log:
+  level: INFO
+accessLog:
+  format: json
+api:
+  dashboard: true
+  insecure: false
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          scheme: https
+          to: websecure
+  websecure:
+    address: ":443"
+    http: &tlsConfig
+      tls:
+        certResolver: cfResolver
+        domains:
+          - main: example.com
+            sans:
+              - "*.example.com"
+              - "*.int.example.com"
+  # Edge-relayed internet traffic; only modePublic* routers bind it.
+  # relay_guard (nftables) pins :8443 to the edge, and the edge to :8443.
+  relayed:
+    address: ":8443"
+    # Trust the edge so real client IPs reach logs/tinyauth.
+    forwardedHeaders:
+      trustedIPs:
+        - "100.64.0.10" # edge tailnet IP
+    http: *tlsConfig
+providers:
+  file:
+    directory: /etc/traefik/config
+    watch: true
+certificatesResolvers:
+  cfResolver:
+    acme:
+      email: acme@example.com
+      storage: /state/acme.json
+      dnsChallenge:
+        provider: cloudflare
+        resolvers:
+          - "1.1.1.1:53"
+          - "1.0.0.1:53"

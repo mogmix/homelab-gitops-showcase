@@ -1,0 +1,32 @@
+services:
+  traefik:
+    image: "traefik:v3.7.17"
+    container_name: traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    # The relay target resolves to ProxyGuard's tailnet address, never its LAN address.
+    extra_hosts:
+      - "proxy.int.example.com:100.64.0.20"
+    volumes:
+      - "./traefik:/etc/traefik:ro" # git-tracked config, converges via reconcile; read-only so traefik can't write state into the tree
+      - "/srv/edge/traefik:/state" # runtime state (acme.json) — outside the checkout, survives reset --hard
+    env_file:
+      - .env # CF_DNS_API_TOKEN secret
+    environment:
+      TZ: Etc/UTC
+    networks:
+      - web
+  # Dedicated service for Forbidden (403) responses
+  forbidden-server:
+    image: nginx:1.31.8-alpine
+    container_name: forbidden-server
+    restart: unless-stopped
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - web
+networks:
+  web:
+    external: false

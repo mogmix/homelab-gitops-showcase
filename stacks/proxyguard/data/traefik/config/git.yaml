@@ -1,0 +1,14 @@
+# modeTailscale: any device on the tailnet. Internet traffic cannot arrive here
+# by binding (no `relayed`), not by IP arithmetic.
+http:
+  routers:
+    git:
+      entryPoints: [websecure]
+      service: git@file
+      rule: Host(`git.example.com`)
+      middlewares: [modeTailscale]
+  services:
+    git:
+      loadBalancer:
+        servers:
+          - url: http://192.0.2.30:3000

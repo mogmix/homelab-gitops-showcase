@@ -1,0 +1,7 @@
+gitea_runner_version: "5.2.0"
+gitea_runner_sha256: "2eb05e7c09701ba194c6a43b8669db7eadf0d5c69b6f59f5710426fd68f82f98"
+gitea_runner_home: /var/lib/gitea-runner
+gitea_runner_config: /etc/gitea-runner/config.yaml
+gitea_runner_name: "{{ inventory_hostname }}"
+gitea_runner_labels:
+  - "ubuntu-latest:docker://docker.gitea.com/runner-images:ubuntu-latest"

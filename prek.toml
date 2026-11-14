@@ -1,0 +1,144 @@
+#:schema https://www.schemastore.org/prek.json
+#:tombi toml-version = "v1.0.0"
+# The whole validation contract.
+#
+#   format  rewriters only, idempotent
+#   check   fast file-local verdicts, over the owned paths
+#   verify  every check hook plus every whole-repository verdict
+#
+# An untagged hook runs in no gate. Whole-repository hooks set
+# `pass_filenames = false` and use `files` only as a trigger. `x-inputs` names
+# every read beyond filenames and `x-prepare` readies a missed check's environment.
+#
+#   prek run --all-files                        # format + fast checks (pre-commit stage)
+#   prek run --all-files --hook-stage manual    # every gate, including verify
+
+minimum_prek_version = "0.5.0"
+default_install_hook_types = ["pre-commit"]
+default_stages = ["manual", "pre-commit"]
+
+# ── Secrets ───────────────────────────────────────────────────────────────────
+[[repos]]
+repo = "https://github.com/gitleaks/gitleaks"
+rev = "v8.30.1"
+hooks = [
+  { id = "gitleaks", stages = ["pre-commit"], groups = ["check", "verify"] },
+]
+
+# ── Hygiene, data validity, and suppression bans ──────────────────────────────
+[[repos]]
+repo = "builtin"
+hooks = [
+  { id = "trailing-whitespace", stages = ["manual", "pre-commit"], groups = ["format"] },
+  { id = "end-of-file-fixer", stages = ["manual", "pre-commit"], groups = ["format"] },
+  { id = "mixed-line-ending", args = ["--fix=lf"], stages = ["manual", "pre-commit"], groups = ["format"] },
+  { id = "check-yaml", args = ["--allow-multiple-documents"], groups = ["check", "verify"] },
+  { id = "check-toml", groups = ["check", "verify"] },
+  { id = "check-added-large-files", groups = ["check", "verify"] },
+  { id = "check-merge-conflict", groups = ["check", "verify"] },
+  { id = "check-case-conflict", groups = ["check", "verify"] },
+  { id = "check-executables-have-shebangs", groups = ["check", "verify"] },
+  { id = "check-shebang-scripts-are-executable", exclude = '\.j2$', groups = ["check", "verify"] },
+
+  # Each pattern is scoped to the file type it means something in, or it fails
+  # on the prose that explains it.
+  { id = "deny-pattern", name = "no bare shellcheck disable", types = ["shell"], args = ["shellcheck disable([^=]|$)"], groups = ["check", "verify"] },
+  { id = "deny-pattern", name = "no ignored shell failures", types = ["shell"], args = ['(\|\| true|set \+e)'], groups = ["check", "verify"] },
+  { id = "deny-pattern", name = "no bare markdownlint-disable", types = ["markdown"], args = ['<!--\s*markdownlint-disable\s*-->'], groups = ["check", "verify"] },
+]
+
+# ── YAML ──────────────────────────────────────────────────────────────────────
+[[repos]]
+repo = "https://github.com/google/yamlfmt"
+rev = "v0.21.0"
+hooks = [
+  { id = "yamlfmt", stages = ["manual", "pre-commit"], groups = ["format"] },
+]
+
+[[repos]]
+repo = "https://github.com/python-jsonschema/check-jsonschema"
+rev = "0.39.0"
+hooks = [
+  { id = "check-compose-spec", files = '(^|/)(compose|docker-compose)\.ya?ml$', groups = ["check", "verify"] },
+]
+
+# ── Shell ─────────────────────────────────────────────────────────────────────
+[[repos]]
+repo = "https://github.com/shellcheck-py/shellcheck-py"
+rev = "v0.11.0.1-1"
+hooks = [{ id = "shellcheck", groups = ["check", "verify"] }]
+
+[[repos]]
+repo = "https://github.com/scop/pre-commit-shfmt"
+rev = "v3.14.1-1"
+hooks = [
+  { id = "shfmt", args = ["-i", "2", "-ci", "-w"], stages = ["manual", "pre-commit"], groups = ["format"] },
+]
+
+# ── Python ────────────────────────────────────────────────────────────────────
+[[repos]]
+repo = "https://github.com/astral-sh/ruff-pre-commit"
+rev = "v0.17.4"
+hooks = [
+  { id = "ruff-check", x-inputs = ["ruff.toml"], groups = ["check", "verify"] },  # verdict only; no --fix in a gate
+  { id = "ruff-check", name = "ruff safe fixes", args = ["--fix-only"], stages = ["manual", "pre-commit"], groups = ["format"], priority = 0 },
+  { id = "ruff-format", stages = ["manual", "pre-commit"], groups = ["format"], priority = 1 },
+]
+
+# ── TOML ──────────────────────────────────────────────────────────────────────
+[[repos]]
+repo = "https://github.com/tombi-toml/tombi-pre-commit"
+rev = "v1.11.0"
+hooks = [
+  { id = "tombi-format", args = ["--offline"], types = ["toml"], stages = ["manual", "pre-commit"], groups = ["format"] },
+]
+
+# ── Markdown ──────────────────────────────────────────────────────────────────
+# A verdict, not a formatter: it exits non-zero on rules it cannot auto-fix.
+[[repos]]
+repo = "https://github.com/DavidAnson/markdownlint-cli2"
+rev = "v0.24.0"
+hooks = [
+  { id = "markdownlint-cli2", x-inputs = [".markdownlint-cli2.yaml"], groups = ["check", "verify"] },
+]
+
+# ── File-local repository rules ───────────────────────────────────────────────
+[[repos]]
+repo = "local"
+hooks = [
+  { id = "just-fmt", name = "justfile formatting", entry = "just --fmt --unstable", language = "system", files = '(^|/)(\.?justfile|.*\.just)$', pass_filenames = false, stages = ["manual", "pre-commit"], groups = ["format"] },
+  { id = "bash-syntax", name = "Bash syntax", entry = "bash -n", language = "system", types = ["shell"], exclude_types = ["zsh"], groups = ["check", "verify"] },
+  { id = "jinja-syntax", name = "Jinja2 templates parse cleanly", entry = "scripts/hooks/check-jinja.py", language = "script", files = '\.j2$', x-inputs = ["scripts/hooks/check-jinja.py"], groups = ["check", "verify"] },
+  { id = "assert-encrypted", name = "Vault/SOPS files are encrypted", entry = "scripts/hooks/check-encrypted.sh", language = "script", files = '(^|/)(vault\.ya?ml|.+\.env\.sops)$', x-inputs = ["scripts/hooks/check-encrypted.sh"], always_run = true, groups = ["check", "verify"] },
+  { id = "traefik-router-modes", name = "Proxyguard routers declare a mode", entry = "scripts/hooks/check-traefik-modes.py", language = "script", files = '^stacks/proxyguard/data/traefik/config/.*\.ya?ml$', x-inputs = ["scripts/hooks/check-traefik-modes.py"], groups = ["check", "verify"] },
+  { id = "dns-records", name = "DNS records match Proxyguard router modes", entry = "scripts/hooks/check-dns-records.py", language = "script", files = '^(inventories/example/group_vars/all/dns_records\.yaml|stacks/proxyguard/data/traefik/config/.*\.ya?ml|scripts/hooks/check-dns-records\.py)$', x-inputs = ["scripts/hooks/check-dns-records.py"], pass_filenames = false, groups = ["check", "verify"] },
+]
+
+# ── Whole-repository verdicts ─────────────────────────────────────────────────
+# `pass_filenames = false` throughout: these read the tree themselves, and a
+# tool handed only the changed files reports false success.
+[[repos]]
+repo = "local"
+hooks = [
+  { id = "just-evaluate", name = "justfile validity", entry = "just --evaluate", language = "system", files = '(^|/)(\.?justfile|.*\.just)$', pass_filenames = false, stages = ["manual"], groups = ["verify"] },
+  { id = "sops-recipients", name = "SOPS .env.sops recipients match .sops.yaml", entry = "scripts/hooks/check-sops-recipients.py", language = "script", files = '(^\.sops\.yaml$|\.env\.sops$)', x-inputs = ["scripts/hooks/check-sops-recipients.py"], pass_filenames = false, stages = ["manual"], groups = ["verify"] },
+  { id = "edge-relay-allowlist", name = "Edge relay allowlist matches modePublic* routers", entry = "scripts/hooks/generate-edge-config.py", language = "script", files = '^(stacks/(proxyguard/data/traefik/config|edge/traefik/config)/.*\.ya?ml|scripts/hooks/generate-edge-config\.py)$', pass_filenames = false, stages = ["manual"], groups = ["verify"] },
+  { id = "chore-audit", name = "deterministic chore audit", entry = "scripts/chore-audit.py", language = "script", x-inputs = ["**"], pass_filenames = false, always_run = true, stages = ["manual"], groups = ["verify"] },
+]
+
+[[repos]]
+repo = "https://github.com/ansible/ansible-lint"
+rev = "v26.11.0"
+hooks = [
+  # Keep static checks independent of operator credentials and inventory.
+  { id = "ansible-lint", entry = "env -u ANSIBLE_VAULT_PASSWORD_FILE -u ANSIBLE_VAULT_IDENTITY_LIST -u ANSIBLE_VAULT_IDENTITY -u ANSIBLE_ASK_VAULT_PASS ansible-lint", env = { ANSIBLE_CONFIG = "ansible-lint.cfg", ANSIBLE_HOME = ".ansible", ANSIBLE_INVENTORY = "/dev/null", ANSIBLE_LOG_PATH = "/dev/null" }, files = '(\.ya?ml$|\.j2$|^(ansible|ansible-lint)\.cfg$|^\.ansible-lint$|^requirements\.yaml$|^(playbooks|roles|inventories)/)', x-inputs = ["playbooks/**", "roles/**", "inventories/**", "ansible.cfg", "ansible-lint.cfg", ".ansible-lint", "requirements.yaml", "*.yaml", ".*.yaml"], x-prepare = ["env", "ANSIBLE_CONFIG=ansible-lint.cfg", "ANSIBLE_HOME=.ansible", "ansible-galaxy", "install", "-r", "requirements.yaml"], pass_filenames = false, always_run = true, stages = ["manual"], groups = ["verify"] },
+]
+
+# ── Config staleness ──────────────────────────────────────────────────────────
+# Every hook selects a file and every exclude matches one.
+[[repos]]
+repo = "meta"
+hooks = [
+  { id = "check-hooks-apply", x-inputs = ["**"], stages = ["manual"], groups = ["verify"] },
+  { id = "check-useless-excludes", x-inputs = ["**"], stages = ["manual"], groups = ["verify"] },
+]

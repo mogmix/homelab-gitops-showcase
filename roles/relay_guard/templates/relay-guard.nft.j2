@@ -1,0 +1,19 @@
+#!/usr/sbin/nft -f
+# {{ ansible_managed }}
+# The edge may reach only :{{ relay_guard_port }}; only the edge may reach :{{ relay_guard_port }}.
+# Own table at priority -10: runs before Tailscale's ts-input (which bypasses
+# UFW for tailnet traffic) and `drop` is terminal across tables.
+
+table inet relay_guard
+delete table inet relay_guard
+table inet relay_guard {
+  chain input {
+    type filter hook input priority -10; policy accept;
+    ct state established,related accept
+    iifname "lo" accept
+    ip saddr {{ relay_guard_edge_ip4 }} tcp dport != {{ relay_guard_port }} log prefix "relay_guard edge blocked: " drop
+    ip6 saddr {{ relay_guard_edge_ip6 }} tcp dport != {{ relay_guard_port }} log prefix "relay_guard edge blocked: " drop
+    ip saddr != {{ relay_guard_edge_ip4 }} tcp dport {{ relay_guard_port }} drop
+    ip6 saddr != {{ relay_guard_edge_ip6 }} tcp dport {{ relay_guard_port }} drop
+  }
+}

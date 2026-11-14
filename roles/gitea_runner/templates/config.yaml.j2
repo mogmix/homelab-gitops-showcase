@@ -1,0 +1,8 @@
+runner:
+  file: {{ gitea_runner_home }}/.runner
+  capacity: 1
+  shutdown_timeout: 2h50m
+container:
+  privileged: false
+  docker_host: "-"
+  valid_volumes: []

@@ -1,0 +1,35 @@
+# Runs the same prek contract as a workstation (see docs/adr/0007).
+#   format  rewriters must be a no-op on committed code
+#   verify  every file-local check plus every whole-repository verdict
+name: validate
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      # Script hooks use `uv run --script`; just hooks need `just`.
+      - uses: astral-sh/setup-uv@v7
+      - uses: extractions/setup-just@v3
+      - name: Install prek
+        run: uv tool install prek==0.5.5
+      - name: Install Ansible Galaxy dependencies
+        run: uvx --from ansible-core ansible-galaxy install -r requirements.yaml
+        env:
+          ANSIBLE_CONFIG: ansible-lint.cfg
+          ANSIBLE_HOME: .ansible
+      - name: Format gate (rewriters must change nothing)
+        run: prek run --all-files --stage manual --group format --show-diff-on-failure
+      - name: Verify gate
+        run: prek run --all-files --stage manual --group verify

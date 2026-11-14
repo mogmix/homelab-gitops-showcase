@@ -1,0 +1,9 @@
+# Managed by Ansible (roles/renovate).
+[Unit]
+Description=Renovate dependency update run
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/docker run --rm --name renovate --memory {{ renovate_memory }} --memory-swap {{ renovate_memory }} --env-file {{ renovate_env_file }} {{ renovate_image }}

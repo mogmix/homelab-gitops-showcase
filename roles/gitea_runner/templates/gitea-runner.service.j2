@@ -1,0 +1,17 @@
+[Unit]
+Description=Gitea Actions runner
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+ExecStart=/usr/local/bin/gitea-runner daemon --config {{ gitea_runner_config }}
+WorkingDirectory={{ gitea_runner_home }}
+User=gitea-runner
+Group=gitea-runner
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=3h
+
+[Install]
+WantedBy=multi-user.target
