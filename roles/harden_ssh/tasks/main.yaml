@@ -1,0 +1,17 @@
+- name: Configure SSH daemon settings
+  ansible.builtin.template:
+    src: sshd_config.j2
+    dest: /etc/ssh/sshd_config
+    owner: root
+    group: root
+    mode: "0600"
+    backup: true
+    validate: /usr/sbin/sshd -t -f %s
+  notify: Restart SSH service
+  tags: ssh, config
+- name: Ensure SSH service is enabled and running
+  ansible.builtin.service:
+    name: ssh
+    enabled: true
+    state: started
+  tags: ssh, service

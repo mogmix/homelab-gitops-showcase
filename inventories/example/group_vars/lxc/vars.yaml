@@ -1,0 +1,11 @@
+# Shared LXC spec (see playbooks/lifecycle/provision-lxc.yaml). Hosts override
+# in host_vars where they deviate (disk, memory, swap).
+lxc_node: hypervisor
+lxc_hostname: "lxc-{{ inventory_hostname | replace('_', '-') }}"
+lxc_ostemplate: "local:vztmpl/debian-13-standard_13.1-2_amd64.tar.zst"
+lxc_storage: local-lvm
+lxc_disk: 8 # GB rootfs
+lxc_cores: 2
+lxc_memory: 512 # MB
+lxc_swap: 512 # MB
+lxc_bridge: vmbr0

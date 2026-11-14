@@ -1,0 +1,4 @@
+ufw_ssh_port: 22
+ufw_limit_ssh: false
+ufw_allowed_ports:
+  - {rule: allow, port: "{{ ufw_ssh_port }}", proto: "tcp"}

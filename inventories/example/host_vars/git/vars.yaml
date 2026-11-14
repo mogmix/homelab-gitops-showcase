@@ -1,0 +1,7 @@
+# --- LXC spec (shared defaults in group_vars/lxc) ---
+lxc_vmid: 130
+lxc_mac: "BC:24:11:00:00:30"
+# UFW: baseline plus the web port ProxyGuard reaches and Gitea's git-SSH port.
+ufw_allowed_ports:
+  - {rule: allow, port: "{{ ufw_ssh_port }}", proto: "tcp"}
+  - {rule: allow, port: "3000", proto: "tcp"}

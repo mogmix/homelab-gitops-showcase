@@ -1,0 +1,61 @@
+- name: Install basic packages
+  ansible.builtin.apt:
+    name:
+      - sudo
+      - fish
+      - rsync
+      - micro
+      - acl
+      - curl
+      - gpg
+    state: present
+    update_cache: true
+- name: Ensure new user is present with sudo privileges
+  ansible.builtin.user:
+    name: "{{ non_root_user }}"
+    groups: sudo
+    append: true
+    shell: /usr/bin/fish
+    createhome: true
+    password: "{{ user_password | password_hash('sha512') }}"
+    update_password: on_create
+    state: present
+- name: Allow sudo group passwordless access
+  ansible.builtin.lineinfile:
+    path: /etc/sudoers
+    state: present
+    regexp: "^%sudo"
+    line: "%sudo ALL=(ALL) NOPASSWD:ALL"
+    validate: "/usr/sbin/visudo -cf %s"
+- name: Ensure SSH directory exists for new user
+  ansible.builtin.file:
+    path: "/home/{{ non_root_user }}/.ssh"
+    state: directory
+    owner: "{{ non_root_user }}"
+    group: "{{ non_root_user }}"
+    mode: "0700"
+- name: Deploy SSH keys for new user "{{ non_root_user }}"
+  ansible.posix.authorized_key:
+    user: "{{ non_root_user }}"
+    state: present
+    key: "{{ item }}"
+  loop: "{{ ssh_keys }}"
+  loop_control:
+    label: "Deploy key for {{ non_root_user }}"
+- name: Create fish config directory
+  ansible.builtin.file:
+    path: "/home/{{ non_root_user }}/.config/fish"
+    state: directory
+    owner: "{{ non_root_user }}"
+    group: "{{ non_root_user }}"
+    mode: "0755"
+- name: Deploy fish configuration
+  ansible.builtin.template:
+    src: config.fish.j2
+    dest: "/home/{{ non_root_user }}/.config/fish/config.fish"
+    owner: "{{ non_root_user }}"
+    group: "{{ non_root_user }}"
+    mode: "0644"
+- name: Set system timezone to "{{ timezone }}"
+  community.general.timezone:
+    name: "{{ timezone }}"

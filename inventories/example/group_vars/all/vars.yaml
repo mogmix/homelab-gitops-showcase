@@ -1,0 +1,14 @@
+timezone: Etc/UTC
+non_root_user: admin
+user_password: "{{ vault_user_password }}"
+ansible_become_pass: "{{ vault_ansible_become_pass }}"
+ssh_keys: "{{ vault_ssh_keys }}"
+proxmox_api_token_id: "{{ vault_proxmox_api_token_id }}"
+proxmox_api_token_secret: "{{ vault_proxmox_api_token_secret }}"
+# Real root@pam password: LXC creation from an ostemplate needs a ticket login, not a token.
+proxmox_root_password: "{{ vault_proxmox_root_password }}"
+# Gitea's tailnet name: the edge VPS pulls the repo here, it can't reach the LAN.
+gitea_tailnet_host: git.example.ts.net
+# The edge VPS's tailnet addresses: the relay_guard role pins the :8443 door to them.
+edge_tailnet_ip: 100.64.0.10
+edge_tailnet_ip6: "fd7a:115c:a1e0::a"

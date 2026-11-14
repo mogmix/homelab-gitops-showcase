@@ -1,0 +1,63 @@
+# Create + start the Proxmox LXCs in [lxc] before the rest of site.yaml runs.
+# First bootstrap of a fresh container connects as root:
+# `HOMELAB_USER=root just play lifecycle/bootstrap --limit <host>`.
+- name: Provision Proxmox LXCs
+  hosts: lxc
+  connection: local
+  gather_facts: false
+  # Run the proxmox module under the same (uv-managed) interpreter as ansible itself,
+  # so it finds proxmoxer — not the auto-discovered system python.
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  # Validate the Proxmox API cert against the cluster CA (proxmoxer uses requests,
+  # which honors this bundle; empty falls back to the system store). Point
+  # proxmox_ca_bundle at the node's exported root CA, kept operator-local.
+  environment:
+    REQUESTS_CA_BUNDLE: "{{ proxmox_ca_bundle | default('') }}"
+  tasks:
+    - name: Create the container
+      community.proxmox.proxmox:
+        api_host: "{{ hostvars[lxc_node].ansible_host }}"
+        api_user: root@pam
+        # Password (ticket) login, not a token: Proxmox only lets the real root@pam
+        # pass an ostemplate path on create ("Only root can pass arbitrary filesystem paths").
+        api_password: "{{ proxmox_root_password }}"
+        validate_certs: true
+        node: "{{ lxc_node }}"
+        vmid: "{{ lxc_vmid }}"
+        hostname: "{{ lxc_hostname | default(inventory_hostname) }}"
+        ostemplate: "{{ lxc_ostemplate }}"
+        disk_volume:
+          storage: "{{ lxc_storage }}"
+          size: "{{ lxc_disk }}"
+        cores: "{{ lxc_cores }}"
+        memory: "{{ lxc_memory }}"
+        swap: "{{ lxc_swap }}"
+        # Pin to a real console mode. The module's default ("default") is a sentinel it only
+        # strips on create; on the update path (existing container) it leaks to the API, which
+        # rejects cmode=default. 'tty' is Proxmox's own default, so this stays idempotent.
+        cmode: tty
+        netif:
+          net0: "name=eth0,ip=dhcp,bridge={{ lxc_bridge }},hwaddr={{ lxc_mac }}"
+        pubkey: "{{ ssh_keys | join('\n') }}"
+        unprivileged: true
+        features:
+          - nesting=1
+        onboot: true
+        state: present
+    - name: Start the container
+      community.proxmox.proxmox:
+        api_host: "{{ hostvars[lxc_node].ansible_host }}"
+        api_user: root@pam
+        api_token_id: "{{ proxmox_api_token_id }}"
+        api_token_secret: "{{ proxmox_api_token_secret }}"
+        validate_certs: true
+        node: "{{ lxc_node }}"
+        vmid: "{{ lxc_vmid }}"
+        hostname: "{{ lxc_hostname | default(inventory_hostname) }}"
+        state: started
+    - name: Wait for SSH to answer
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 22
+        timeout: 120

@@ -1,0 +1,17 @@
+# Ansible-lint configuration
+profile: safety
+exclude_paths:
+  - .ansible/roles/
+  - .ansible/collections/
+  - .github
+  - stacks
+  - docs
+  # Ciphertext; the linter cannot decrypt it.
+  - inventories/**/vault.yaml
+# Enable offline mode
+offline: true
+# Treat warnings as errors
+strict: true
+skip_list:
+  # The fleet installs latest; pinning every package is noise.
+  - package-latest

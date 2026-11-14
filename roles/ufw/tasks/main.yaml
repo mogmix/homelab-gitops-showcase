@@ -1,0 +1,41 @@
+- name: Ensure UFW is installed
+  ansible.builtin.apt:
+    name: ufw
+    state: present
+  tags: ufw
+# Rebuild the rule set from scratch each run so rules dropped from
+# ufw_allowed_ports are actually removed from the host (the module has no
+# declarative "reconcile to this set" mode). Existing connections survive a reset.
+- name: Reset UFW to a clean slate
+  community.general.ufw:
+    state: reset
+  tags: ufw
+- name: Configure UFW default incoming policy to deny
+  community.general.ufw:
+    default: deny
+    direction: incoming
+  tags: ufw
+- name: Allow necessary ports through UFW
+  community.general.ufw:
+    rule: "{{ item.rule }}"
+    # port/proto/src all optional: a src-only rule matches every port (used to
+    # deny a host all ports but one). Omitted entries stay fleet-wide.
+    port: "{{ item.port | default(omit) }}"
+    proto: "{{ item.proto | default(omit) }}"
+    src: "{{ item.src | default(omit) }}"
+  loop: "{{ ufw_allowed_ports }}"
+  loop_control:
+    label: "{{ item.rule }} {{ item.proto | default('any') }}/{{ item.port | default('all') }} from {{ item.src | default('anywhere') }}"
+  tags: ufw
+- name: Limit SSH connections
+  community.general.ufw:
+    rule: limit
+    port: "{{ ufw_ssh_port }}"
+    proto: tcp
+  when: ufw_limit_ssh | default(false)
+  tags: ufw
+- name: Enable UFW and logging
+  community.general.ufw:
+    state: enabled
+    logging: true
+  tags: ufw

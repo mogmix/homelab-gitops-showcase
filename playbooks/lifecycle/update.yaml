@@ -1,0 +1,5 @@
+- name: Perform system updates and clean-up
+  hosts: all:!no_auto_update
+  become: true
+  roles:
+    - system_update

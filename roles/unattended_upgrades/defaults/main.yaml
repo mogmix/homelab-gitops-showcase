@@ -1,0 +1,15 @@
+# Periodic apt maintenance (see /etc/apt/apt.conf.d/20auto-upgrades).
+# 0 disables a job; other values are a run interval in days.
+unattended_upgrades_update_lists: 1
+unattended_upgrades_download: 1
+unattended_upgrades_autoclean_interval: 7
+unattended_upgrades_upgrade: 1
+# Origins auto-upgraded. Security only — full upgrades stay Ansible-driven.
+# ${distro_codename} is expanded by unattended-upgrades itself at runtime.
+unattended_upgrades_origins:
+  - "origin=Debian,codename=${distro_codename},label=Debian-Security"
+  - "origin=Debian,codename=${distro_codename}-security,label=Debian-Security"
+# Packages never touched automatically (matched as substrings). Extend per group.
+unattended_upgrades_blacklist: []
+# Never reboot unattended — reboots are a human / orchestration decision.
+unattended_upgrades_automatic_reboot: false

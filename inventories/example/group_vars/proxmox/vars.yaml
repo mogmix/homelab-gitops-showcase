@@ -1,0 +1,17 @@
+# Proxmox web UI must stay reachable — ufw default-deny would otherwise block port 8006.
+# Single node, so no corosync ports needed.
+ufw_allowed_ports:
+  - {rule: allow, port: "{{ ufw_ssh_port }}", proto: "tcp"}
+  - {rule: allow, port: "8006", proto: "tcp"}
+# unattended-upgrades: Debian security patches still auto-apply, but hard-exclude
+# Proxmox's own stack + kernel/zfs so nothing needing a coordinated upgrade or a
+# reboot is ever touched unattended. PVE upgrades are performed deliberately.
+# (Automatic-Reboot stays false via the role default — see roles/unattended_upgrades.)
+unattended_upgrades_blacklist:
+  - "proxmox-"
+  - "pve-"
+  - "libpve-"
+  - "qemu-server"
+  - "proxmox-kernel"
+  - "pve-kernel"
+  - "zfs"

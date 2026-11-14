@@ -1,0 +1,18 @@
+edge_journal_max_use: 200M
+# The public VPS edge: a first-class GitOps host.
+gitops_stacks:
+  - edge
+# Pull over the tailnet: the VPS can't reach Gitea's LAN address.
+gitops_repo_url: "ssh://git@{{ gitea_tailnet_host }}/owner/homelab.git"
+# Its own read-only deploy key, distinct from the shared fleet key. Register the public
+# half in Gitea read-only. Private half lives in host_vars/edge/vault.yaml.
+gitops_deploy_key: "{{ vault_edge_deploy_key }}"
+# The edge's own per-tier age key, not the shared fleet key: a compromised edge can
+# decrypt only stacks/edge/.env.sops, nothing else in the repo. Private half in
+# host_vars/edge/vault.yaml; public recipient in .sops.yaml.
+gitops_age_key: "{{ vault_edge_age_key }}"
+# Public ingress is HTTPS only; SSH stays open for Ansible.
+ufw_allowed_ports:
+  - {rule: allow, port: "{{ ufw_ssh_port }}", proto: "tcp"}
+  - {rule: allow, port: "80", proto: "tcp"}
+  - {rule: allow, port: "443", proto: "tcp"}

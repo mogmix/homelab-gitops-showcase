@@ -1,0 +1,39 @@
+- name: Update apt package cache (if older than 1 hour)
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+  tags:
+    - update
+    - apt
+- name: Perform a full distribution upgrade
+  ansible.builtin.apt:
+    upgrade: dist
+    state: latest
+  register: system_update_apt_result
+  tags:
+    - update
+    - apt
+- name: Autoremove unneeded packages
+  ansible.builtin.apt:
+    autoremove: true
+  tags:
+    - cleanup
+    - apt
+- name: Automatically clean up the local repository of retrieved package files
+  ansible.builtin.apt:
+    autoclean: true
+  tags:
+    - cleanup
+    - apt
+- name: Check if a reboot is required (common after kernel updates)
+  ansible.builtin.stat:
+    path: /var/run/reboot-required
+  register: system_update_reboot_required_file
+  tags:
+    - reboot_check
+- name: Trigger reboot if required
+  ansible.builtin.reboot:
+    reboot_timeout: 600
+  when: system_update_reboot_required_file.stat.exists
+  tags:
+    - reboot

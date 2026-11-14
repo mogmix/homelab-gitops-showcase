@@ -1,0 +1,2 @@
+harden_ssh_user: "{{ non_root_user }}"
+harden_ssh_port: "{{ ssh_port | default(22) }}"

@@ -1,0 +1,91 @@
+# Baseline hardening applies to every host; optional capabilities are driven by
+# inventory groups ([docker]/[tailscale]) — declare per-host, not per-run.
+- name: Base OS hardening
+  hosts: all
+  become: true
+  gather_facts: true
+  force_handlers: true
+  roles:
+    - user
+    - harden_ssh
+    - ufw
+    - fail2ban
+    - unattended_upgrades
+- name: Edge disk retention
+  hosts: edge
+  become: true
+  gather_facts: false
+  tags: [edge_retention]
+  tasks:
+    - name: Create journald configuration directory
+      ansible.builtin.file:
+        path: /etc/systemd/journald.conf.d
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+    - name: Limit persistent journal disk use
+      ansible.builtin.copy:
+        dest: /etc/systemd/journald.conf.d/retention.conf
+        content: |
+          [Journal]
+          SystemMaxUse={{ edge_journal_max_use }}
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart journald
+    - name: Prevent downloaded APT packages accumulating
+      ansible.builtin.copy:
+        dest: /etc/apt/apt.conf.d/99-edge-cache-retention
+        content: |
+          APT::Keep-Downloaded-Packages "false";
+          Binary::apt::APT::Keep-Downloaded-Packages "false";
+          Binary::apt-get::APT::Keep-Downloaded-Packages "false";
+          APT::Periodic::AutocleanInterval "7";
+          DPkg::Post-Invoke { "test ! -d /var/cache/apt/archives || find /var/cache/apt/archives -maxdepth 1 -type f -name '*.deb' -delete"; };
+        owner: root
+        group: root
+        mode: "0644"
+  handlers:
+    - name: Restart journald
+      ansible.builtin.systemd_service:
+        name: systemd-journald
+        state: restarted
+- name: Docker Engine
+  hosts: docker
+  tags: [docker]
+  become: true
+  gather_facts: true
+  force_handlers: true
+  vars:
+    docker_users:
+      - "{{ non_root_user }}"
+    docker_daemon_options:
+      log-driver: json-file
+      log-opts:
+        max-size: 10m
+        max-file: "3"
+  roles:
+    - geerlingguy.docker
+- name: Tailscale
+  hosts: tailscale
+  become: true
+  gather_facts: true
+  vars:
+    tailscale_up_skip: true
+  roles:
+    - artis3n.tailscale.machine
+- name: Relay guard (pins :8443 to the edge above Tailscale's chains)
+  hosts: proxyguard
+  become: true
+  gather_facts: false
+  force_handlers: true
+  roles:
+    - relay_guard
+- name: Read-only Docker API for monitoring agents (no docker-group root)
+  hosts: docker
+  become: true
+  gather_facts: false
+  tags: [docker_socket_proxy]
+  roles:
+    - docker_socket_proxy

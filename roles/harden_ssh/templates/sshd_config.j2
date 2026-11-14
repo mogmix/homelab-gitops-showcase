@@ -1,0 +1,11 @@
+Port {{ harden_ssh_port }}
+AddressFamily inet
+PermitRootLogin no
+PasswordAuthentication no
+ChallengeResponseAuthentication no
+UsePAM yes
+PrintMotd no
+AllowUsers {{ harden_ssh_user }}
+X11Forwarding no
+LoginGraceTime 1m
+MaxAuthTries 3

@@ -1,0 +1,10 @@
+gitops_stacks:
+  - proxyguard
+# Tailnet traffic bypasses UFW (ts-input precedes its chains): the edge<->:8443
+# symmetry is enforced by the relay_guard role, not here. The :8443 allow covers
+# the non-tailnet path only.
+ufw_allowed_ports:
+  - {rule: allow, port: "8443", proto: "tcp", src: "{{ edge_tailnet_ip }}"}
+  - {rule: allow, port: "{{ ufw_ssh_port }}", proto: "tcp"}
+  - {rule: allow, port: "80", proto: "tcp"}
+  - {rule: allow, port: "443", proto: "tcp"}

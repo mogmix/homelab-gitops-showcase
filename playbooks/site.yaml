@@ -1,0 +1,24 @@
+# Composition root: the whole fleet.
+#   Everything:   ansible-playbook playbooks/site.yaml -u <user>
+- name: Provision LXCs on Proxmox
+  import_playbook: lifecycle/provision-lxc.yaml
+  tags: [lifecycle, provision]
+- name: Bootstrap base OS across the fleet
+  import_playbook: lifecycle/bootstrap.yaml
+  tags: [lifecycle, bootstrap]
+- name: Deploy GitOps reconciler
+  import_playbook: services/gitops.yaml
+  tags: [services, gitops]
+- name: Deploy Renovate
+  import_playbook: renovate.yaml
+  tags: [services, renovate]
+- name: Deploy Gitea Actions runner
+  import_playbook: services/gitea_runner.yaml
+  tags: [services, gitea_runner]
+- name: Deploy Docker image prune
+  import_playbook: services/docker_prune.yaml
+  tags: [services, docker_prune]
+# Maintenance patching last, after everything is configured.
+- name: Patch and clean up the fleet
+  import_playbook: lifecycle/update.yaml
+  tags: [lifecycle, update]

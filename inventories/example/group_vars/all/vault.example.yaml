@@ -1,0 +1,10 @@
+vault_user_password: CHANGE_ME
+vault_ansible_become_pass: CHANGE_ME
+vault_ssh_keys:
+  - ssh-ed25519 AAAAEXAMPLEKEYCHANGEME user@example
+vault_proxmox_api_token_id: CHANGE_ME
+vault_proxmox_api_token_secret: CHANGE_ME
+vault_proxmox_root_password: CHANGE_ME
+vault_cloudflare_dns_token: CHANGE_ME
+vault_gitops_deploy_key: CHANGE_ME
+vault_gitops_age_key: CHANGE_ME

@@ -1,0 +1,2 @@
+[tools]
+"pypi:ansible" = { version = "14.6.0", with = ["passlib", "requests", "proxmoxer"], expose = ["ansible-core", "ansible-lint"], install_env = { UV_PYTHON_PREFERENCE = "only-managed" } }

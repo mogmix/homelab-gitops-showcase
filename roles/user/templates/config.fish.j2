@@ -1,0 +1,20 @@
+# 1. Environment Variables (Set these first)
+set -gx EDITOR micro
+set -gx MICRO_CONFIG_HOME "$HOME/.micro"
+
+# 2. Path
+# fish_add_path is the best way to handle PATH in fish
+fish_add_path "$HOME/bin"
+
+# 3. History
+set -gx SAVEHIST 5
+set -gx HISTSIZE 5
+set -gx HISTIGNORE "wget*"
+set -gx PYTHONHISTFILE ""
+set -gx LESSHISTFILE ""
+set -gx HISTFILE ""
+
+# 4. Aliases (Set these last so $EDITOR is already defined)
+alias e='$EDITOR'
+alias ll='ls -l'
+alias la='ls -A -l'
