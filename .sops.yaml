@@ -1,0 +1,13 @@
+# SOPS config for encrypting stack secrets (see docs/ref/gitops.md, Secrets).
+# `sops -e stacks/<s>/.env > stacks/<s>/.env.sops` picks up the first matching rule.
+# Recipients are age *public* keys. The ones below are obviously fake placeholders;
+# the private halves live in ansible-vault and on the operator workstation.
+creation_rules:
+  # Edge tier: scoped to its own key (not the fleet key) so a compromised internet-facing
+  # host decrypts only this secret. The admin key is break-glass. Must precede the
+  # catch-all: SOPS applies the first matching rule.
+  - path_regex: stacks/edge/\.env(\.sops)?$
+    age: age1exampleedgexxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,age1exampleadminxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+  # Fleet tier: one shared key on every gitops host, plus the admin key.
+  - path_regex: stacks/.*/\.env(\.sops)?$ # plaintext for `sops -e`, encrypted for `sops updatekeys`
+    age: age1examplefleetxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,age1exampleadminxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
