@@ -1,0 +1,109 @@
+- name: Ensure ~/.ssh exists for gitops user
+  ansible.builtin.file:
+    path: "/home/{{ gitops_user }}/.ssh"
+    state: directory
+    owner: "{{ gitops_user }}"
+    group: "{{ gitops_user }}"
+    mode: "0700"
+- name: Install shared read-only deploy key
+  ansible.builtin.copy:
+    content: "{{ gitops_deploy_key }}"
+    dest: "/home/{{ gitops_user }}/.ssh/gitops_deploy"
+    owner: "{{ gitops_user }}"
+    group: "{{ gitops_user }}"
+    mode: "0600"
+- name: Install age (apt) for SOPS decryption
+  ansible.builtin.apt:
+    name: age
+    state: present
+- name: Install pinned sops binary
+  ansible.builtin.get_url:
+    url: "{{ gitops_sops_url }}"
+    dest: /usr/local/bin/sops
+    checksum: "sha256:{{ gitops_sops_sha256 }}"
+    owner: root
+    group: root
+    mode: "0755"
+- name: Ensure age key dir exists for gitops user
+  ansible.builtin.file:
+    path: "{{ gitops_age_key_file | dirname }}"
+    state: directory
+    owner: "{{ gitops_user }}"
+    group: "{{ gitops_user }}"
+    mode: "0700"
+- name: Install age identity used by sops -d
+  ansible.builtin.copy:
+    content: "{{ gitops_age_key }}"
+    dest: "{{ gitops_age_key_file }}"
+    owner: "{{ gitops_user }}"
+    group: "{{ gitops_user }}"
+    mode: "0600"
+- name: Ensure repo dir exists and is owned by gitops user
+  ansible.builtin.file:
+    path: "{{ gitops_dest }}"
+    state: directory
+    owner: "{{ gitops_user }}"
+    group: "{{ gitops_user }}"
+    mode: "0755"
+- name: Pin the Gitea SSH host key (overwrites any stale/conflicting entry)
+  become: true
+  become_user: "{{ gitops_user }}"
+  vars:
+    gitops_gitea_host: "{{ gitops_repo_url | urlsplit('hostname') }}"
+    gitops_gitea_port: "{{ gitops_repo_url | urlsplit('port') | default(22, true) }}"
+    # known_hosts writes non-default ports as [host]:port.
+    gitops_gitea_addr: "{{ gitops_gitea_host if gitops_gitea_port | int == 22 else '[' ~ gitops_gitea_host ~ ']:' ~ gitops_gitea_port }}"
+  ansible.builtin.known_hosts:
+    name: "{{ gitops_gitea_addr }}"
+    key: "{{ gitops_gitea_addr }} {{ gitops_gitea_host_key }}"
+    state: present
+    path: "/home/{{ gitops_user }}/.ssh/known_hosts"
+- name: Clone homelab repo
+  become: true
+  become_user: "{{ gitops_user }}"
+  ansible.builtin.git:
+    repo: "{{ gitops_repo_url }}"
+    dest: "{{ gitops_dest }}"
+    version: "{{ gitops_branch }}"
+    key_file: "/home/{{ gitops_user }}/.ssh/gitops_deploy"
+    update: false # the timer manages updates thereafter
+- name: Pin git to the deploy key for non-interactive timer runs
+  become: true
+  become_user: "{{ gitops_user }}"
+  community.general.git_config:
+    name: core.sshCommand
+    value: "ssh -i /home/{{ gitops_user }}/.ssh/gitops_deploy"
+    scope: local
+    repo: "{{ gitops_dest }}"
+- name: Install reconcile script
+  ansible.builtin.template:
+    src: gitops-reconcile.sh.j2
+    dest: /usr/local/bin/gitops-reconcile.sh
+    owner: root
+    group: root
+    mode: "0755"
+- name: Write reconcile config
+  ansible.builtin.template:
+    src: homelab-gitops.conf.j2
+    dest: /etc/homelab-gitops.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart gitops timer
+- name: Install systemd units
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - gitops-reconcile.service
+    - gitops-reconcile.timer
+  notify: Restart gitops timer
+- name: Enable and start reconcile timer
+  ansible.builtin.systemd_service:
+    name: gitops-reconcile.timer
+    daemon_reload: true
+    enabled: true
+    state: started

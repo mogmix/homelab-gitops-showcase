@@ -1,0 +1,19 @@
+gitops_repo_url: "ssh://git@git.int.example.com/owner/homelab.git" # SSH, read-only deploy key
+gitops_dest: /opt/homelab
+gitops_branch: main
+gitops_user: "{{ non_root_user }}" # owns the checkout; already in docker group
+gitops_interval: "2min" # systemd OnUnitInactiveSec
+gitops_prune: false # optional `docker image prune -f` after reconcile
+gitops_stacks: [] # set per-host in host_vars
+gitops_deploy_key: "{{ vault_gitops_deploy_key }}" # shared read-only private key, ansible-vault
+# Gitea SSH host public key, pinned into the gitops user's known_hosts so a rotated or stale
+# entry can never silently wedge the reconcile loop. Public, not secret. Gitea's built-in SSH
+# server has its own host key (not the guest's sshd key). Update by hand if it rotates:
+# ssh-keyscan git.int.example.com
+gitops_gitea_host_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExampleExampleExampleExampleExampleExample00"
+# SOPS: decrypt .env.sops on-host at reconcile time.
+gitops_sops_version: "3.13.2"
+gitops_sops_sha256: "154dfe4cd70554bdd82b98e4cd4acf191d43d01ead6f00a73477aa44c4ac42ef"
+gitops_sops_url: "https://github.com/getsops/sops/releases/download/v{{ gitops_sops_version }}/sops-v{{ gitops_sops_version }}.linux.amd64"
+gitops_age_key_file: "/home/{{ gitops_user }}/.config/sops/age/keys.txt" # age identity, sops default path
+gitops_age_key: "{{ vault_gitops_age_key }}" # age private key, ansible-vault

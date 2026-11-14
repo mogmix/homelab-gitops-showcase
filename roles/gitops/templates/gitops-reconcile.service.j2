@@ -1,0 +1,12 @@
+# Managed by Ansible (roles/gitops).
+[Unit]
+Description=Reconcile homelab stacks toward git (pull-based GitOps)
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+User={{ gitops_user }}
+RuntimeDirectory=gitops-reconcile
+EnvironmentFile=/etc/homelab-gitops.conf
+ExecStart=/usr/local/bin/gitops-reconcile.sh

@@ -1,0 +1,10 @@
+- name: Deploy and reconcile GitOps stacks
+  hosts: gitops
+  become: true
+  roles:
+    - gitops
+  tasks:
+    - name: Reconcile GitOps stacks now
+      ansible.builtin.systemd_service:
+        name: gitops-reconcile.service
+        state: started

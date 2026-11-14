@@ -1,0 +1,53 @@
+#!/bin/sh
+# Managed by Ansible (roles/gitops). Pull-based reconcile loop, run by the systemd timer.
+set -eu
+. /etc/homelab-gitops.conf
+
+[ -f /etc/homelab-gitops.disabled ] && exit 0 # per-host kill switch (freeze a box)
+
+exec 9>/run/gitops-reconcile/lock
+flock -n 9 || exit 0 # no overlapping runs
+
+cd "$REPO_DIR"
+git fetch --quiet origin "$BRANCH"
+# True convergence: revert tracked files to main. Reverts hand-edited tracked files by design.
+# NEVER add `git clean` here — it would delete untracked .env / secrets / data on every host.
+git reset --hard --quiet "origin/$BRANCH"
+
+rc=0
+for s in $STACKS; do
+  d="$REPO_DIR/stacks/$s"
+  # SOPS: regenerate .env from the tracked .env.sops each tick. Guarded, so manual-.env stacks are
+  # untouched. A failed decrypt fails just this stack (rc=1), like a failed compose up.
+  if [ -f "$d/.env.sops" ]; then
+    # --input-type: .sops is an unknown extension, so SOPS would guess binary/JSON and choke on the
+    # dotenv content. Pin dotenv both ways since these are always encrypted .env files.
+    sops -d --input-type dotenv --output-type dotenv --output "$d/.env" "$d/.env.sops" \
+      || { echo "decrypt $s failed" >&2; rc=1; continue; }
+  fi
+  # Skip-gate: a stack that ships a .env.example needs a real .env placed first. Skip (don't fail)
+  # until it exists, so a host can list a stack before its secret is in place. Stacks with no
+  # .env.example (no secret needed) are never gated.
+  if [ -f "$d/.env.example" ] && [ ! -f "$d/.env" ]; then
+    echo "skip $s: .env not yet placed" >&2
+    continue
+  fi
+  # cd into the stack dir so .env, ${PWD}, relative secrets and bind mounts resolve correctly.
+  (cd "$d" && docker compose up -d --remove-orphans --quiet-pull) || rc=1
+done
+
+# Orphan teardown: a homelab stack running here but no longer assigned to this host.
+for d in "$REPO_DIR"/stacks/*/; do
+  s=$(basename "$d")
+  printf '%s\n' $STACKS | grep -qxF "$s" && continue
+  [ -n "$(docker ps -aq -f "label=com.docker.compose.project=$s")" ] || continue
+  echo "teardown $s: no longer assigned to this host" >&2
+  (cd "$d" && docker compose down --remove-orphans) || rc=1
+  # Scrub the decrypted plaintext .env so decommissioning never strands a secret on disk.
+  [ -f "$d/.env.sops" ] && rm -f "$d/.env"
+done
+
+if [ "$PRUNE" = "true" ] && ! docker image prune -f >/dev/null; then
+  echo "image prune failed" >&2
+fi
+exit $rc

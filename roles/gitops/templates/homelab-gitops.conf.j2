@@ -1,0 +1,6 @@
+# Managed by Ansible (roles/gitops). Sourced by gitops-reconcile.sh.
+REPO_DIR={{ gitops_dest }}
+BRANCH={{ gitops_branch }}
+STACKS="{{ gitops_stacks | join(' ') }}"
+PRUNE={{ gitops_prune | bool | lower }}
+SOPS_AGE_KEY_FILE={{ gitops_age_key_file }}

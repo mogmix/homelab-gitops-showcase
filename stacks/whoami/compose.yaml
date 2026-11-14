@@ -1,0 +1,21 @@
+# Demo stack: the smallest thing that shows every GitOps storage rule.
+#   config-as-code  ./config, git-owned, mounted read-only
+#   runtime state   /srv/whoami, outside the checkout, survives `git reset --hard`
+#   secret          .env, decrypted from .env.sops each tick (see .env.example)
+name: whoami
+services:
+  whoami:
+    image: "traefik/whoami:v1.11.0"
+    container_name: whoami
+    restart: unless-stopped
+    command: ["--port", "8080", "--name", "${WHOAMI_NAME:-whoami}"]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    volumes:
+      - "./config:/config:ro" # git-tracked config, converges via reconcile; read-only
+      - "/srv/whoami:/data" # runtime state, outside the checkout
+    env_file:
+      - .env # WHOAMI_NAME and the demo token
+    ports:
+      - "8080:8080"
